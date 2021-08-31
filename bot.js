@@ -24,16 +24,11 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 })
-const title = '``starting...``'
 const defaultChannel = '717086427581775896'
 var setChannel
-var botChl
-var botMsg
-var lastMsg
 var logMessages = true
 var messages = []
 var other_messages = []
-var msgids
 var nicknames = new Map()
 var usernames = new Map()
 const db = new Database()
@@ -46,6 +41,7 @@ const { Server } = require("socket.io");
 const io = new Server(server)
 var discord_inited = false
 var console_cache_arr = []
+var init = new EventEmitter()
 
 colors.setTheme({
   logMessage: ['brightBlue', 'italic']
@@ -53,45 +49,18 @@ colors.setTheme({
 
 /// Functions
 
-const Jimp = require('jimp')
-
 function console_cache(stuff) {
 	console_cache_arr.push(stuff)
 }
 
-async function main() {
-  const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
-  const image = await Jimp.read(1000, 1000, 0x0000ffff);
-
-  image.print(font, 10, 10, 'Hello World!');
-}
-
-main()
-
-function send(msg) {
-  botChl.send(String(msg))
-}
-
-function small_send(msg) {
-	setChannel.send(emoji.emojify(String(msg)))
-}
-
-function sendError(type) {
-  switch(type) {
-    case'syntax':
-      send('\`\`Invalid syntax\`\`')
-    break
-    default:
-      send('\`\`error\`\`')
-    break
-  }
+async function small_send(msg) {
+	let m = await setChannel.send(emoji.emojify(String(msg)))
+	messages.push(m)
 }
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-
-var init = new EventEmitter()
 
 function get_channels() {
 	let to_send = []
@@ -325,74 +294,8 @@ client.on('message', msg => {
         logColor(value.url, 'brightBlue')
       })
   }
-    lastMsg = msg
-  }
-  botMsg = msg
-  botChl = msg.channel
-
-  if (msg.content.startsWith('.ax ')) {
-    botCmd(msg.content.replace('.ax ', ''), msg)
   }
 })
-
-const botCmds = new Map
-
-    botCmds.set('help', {desc: 'Displays this embed', args: ['none']})
-    botCmds.set('test', {desc: 'A command for testing', args: ['none']})
-    botCmds.set('new', {desc: 'Nothing at the moment', args: ['name', 'color']})
-
-function botCmd(input, raw) {
-  const args = String(input).split(" ")
-  const argCount = Number(args.length)-1
-  const cmd = String(args[0]).toLowerCase()
-  args.splice(0, 1)
-  logNote(`${raw.author.username} used "${cmd}" command${(argCount === 0) ? "" : ` with ${argCount} arguments`}`)
-  function checkArgs(count) {
-    if (argCount !== count) {
-      sendError('syntax')
-      return false
-    } else {
-      return true
-    }
-}
-  switch(cmd) {
-
-    case'help':
-      let capitalize = (s) => {
-      if (typeof s !== 'string') return ''
-      return s.charAt(0).toUpperCase() + s.slice(1)
-      }
-      let a = []
-      botCmds.forEach((value, key, map)=> {
-      a.push(`**${capitalize(key)}**: ${value.desc}. *(arguments: ${value.args.join(", ")})*`)
-      })
-      botChl.send(new MessageEmbed()
-            .setAuthor(`≽(• _ •)≼ AxolotlBot's Commands ≽(• _ •)≼`)
-            .setTitle(`**Syntax:** *.ax [command] <arguments>*`)
-            .setDescription(a.join("\n"))
-            .setColor(`#024ACA`)
-            .setFooter('Bot developed by: BluAxolotl'))
-    break
-
-    case'test':
-      send('✅Test successful!')
-      logColor('Test successful', ['green'])
-    break
- my 
-    case'new':
-      if (checkArgs(2)) {
-        let ax = new Axolotl(args[0], 0, args[1], 1, 'nothing')
-        let axe = new AxolotlEmbed(ax.name, ax.age, ax.color, ax.size, ax.ability)
-        botChl.send(axe.embed)
-        logData(ax)
-      }
-    break
-    
-    default:
-      send('Unknown command.')
-    break
-  }
-}
 
 /// console
 rl.on('line', async (input) => {
@@ -504,82 +407,14 @@ rl.on('line', async (input) => {
 			messages = []
 			log("deleted all cached AxoBot messages")
 		break
-		case 'save':
-		function save() {
-			db.empty()
-			db.set("usernames",Array.from(usernames.values())).then(() => {
-				db.set("nicknames", Array.from(nicknames.values())).then(() => {
-					db.set("messages", messages).then(() => {
-						db.get("usernames").then(v => {
-							if (v == null) {
-								logErr("Error saving usernames")
-								save()
-							} else{
-								db.get("nicknames").then(val => {
-									if (val == null) {
-										logErr("Error saving nicknames")
-										save()
-									} else {
-										db.get("messages").then(msg => {
-											if (msg == null) {
-												logErr("Error saving messages")
-												save()
-											} else {
-												logColor("saved!", "green")
-											}
-										})
-									}
-								})
-							}
-							})
-					})
-				})
-			})
-		}
-		save()
-		break
-		case 'savemsg':
-		db.delete("messages").then(() => {
-				db.set("messages", messages).then(() => {
-					logColor("saved messages!", "green")
-				})
-		})
-		break
-		case 'clrmsg':
-			db.set("messages", []).then(() => {
-			logColor("Deleted messages!", "green")
-		})
-		break
 		case 'reply':
 			let ii = Number(args[1])
 			let contentss = emoji.emojify(String(args.join(" ")).replace(`reply ${args[1]} `, ""))
 			let msgmsg = await other_messages[ii].reply(contentss)
 			messages.push(msgmsg)
 		break
-		case 'load':
-		usernames.clear()
-		nicknames.clear()
-		db.get("usernames").then(v => {
-			db.get("nicknames").then(val => {
-				v.forEach(function(item, index, array) {
-					nicknames.set(item, val[index])
-					usernames.set(val[index], item)
-				})
-				db.get("messages").then(msgs => {
-					msgs.forEach(function(item, index, array) {
-						item.fetch().then(m => {
-							messages.push(m)
-						})
-					})
-					logNote(msgs)
-					logColor("loaded!", "green")
-				})
-			})
-		})
-		break
     default:
-      let m = await setChannel.send(emoji.emojify(input.replace("send ", "")))
-			messages.push(m)
+      input.replace("send ", "")
     break
   }
 })
