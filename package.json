@@ -1,7 +1,6 @@
 {
-  "name": "ExternalAntiqueWeblogsoftware",
+  "name": "externalantiqueweblogsoftware",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@replit/database": "^2.0.0",
+    "browserify": "^17.0.0",
     "colors": "^1.4.0",
     "console-progress-bar": "^1.0.5",
     "discord-inline-reply": "^1.0.3",
@@ -24,5 +24,14 @@
     "node-emoji": "^1.10.0",
     "request": "^2.88.2",
     "socket.io": "^4.1.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BluAxolotl/BluBot5.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BluAxolotl/BluBot5/issues"
+  },
+  "homepage": "https://github.com/BluAxolotl/BluBot5#readme",
+  "description": ""
 }

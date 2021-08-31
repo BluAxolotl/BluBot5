@@ -1,4 +1,5 @@
 var colors = require('colors/safe')
+const botInfo = require('./botInfo.json')
 const classes = require('./classes.js')
 const Axolotl = classes.Axolotl
 var emoji = require('node-emoji')
@@ -108,12 +109,21 @@ function get_servers() {
 				if (!error && response.statusCode == 200) {
 					gd_data = "data:" + response.headers["content-type"] + ";base64," + Buffer.from(body).toString('base64');
 				}
-				to_send.push({
+				let the_obj = {
 					name: i.name,
 					icon: gd_data,
 					id: i.id,
 					channels: channels,
+				}
+				Object.keys(the_obj).forEach(key => {
+					let bot_server = botInfo.servers[i.id]
+					if (bot_server != null && bot_server[key] != null) {
+						the_obj[key] = bot_server[key]
+						print("patching :/")
+					}
 				})
+				to_send.push(the_obj)
+
 				guilds_iter++
 				if (guilds_iter == guilds_total) {
 					to_send.sort((a, b) => a.name < b.name)
@@ -431,7 +441,7 @@ client.channels.fetch(defaultChannel)
   })
 })
 
-client.login('NzA1MzQ3NjcwMDU0NjY2MjYw.XqqYNQ.NVlqpFcipU3figJPETkF5B6oH_k')
+client.login(botInfo["token"])
 
 server.listen(4000, () => {
   console.log('listening on *:3000');
