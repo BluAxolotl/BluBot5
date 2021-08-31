@@ -51,6 +51,12 @@ colors.setTheme({
 
 /// Functions
 
+function init_emotes() {
+	base_emotes = 
+}
+
+init_emotes()
+
 function compareTwoStrings(first, second) {
 	first = first.replace(/\s+/g, '')
 	second = second.replace(/\s+/g, '')
@@ -447,6 +453,11 @@ rl.on('line', async (input) => {
       let f = new Function(`${input.replace("calc ", "return ")}`)
 			log(`result: ${f()}`)
     break
+		case 'search':
+			client.channels.fetch(input.replace("search ", "")).then(i => {
+				print(`Channel Name: ${i.name} | Server: ${i.guild.name}`)
+			})
+		break
 		case 'nick':
       let nickname = args[1]
 			let usertag = String(args.join(" ")).replace(`nick ${args[1]} `, "")
