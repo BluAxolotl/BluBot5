@@ -3,6 +3,7 @@ const botInfo = require('./botInfo.json')
 const classes = require('./classes.js')
 const Axolotl = classes.Axolotl
 var emoji = require('node-emoji')
+var stringSimilarity = require("string-similarity")
 const AxolotlEmbed = classes.AxolotlEmbed
 const console = require('./console.js')
 var print = console.log
@@ -25,7 +26,7 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 })
-const defaultChannel = '717086427581775896'
+const defaultChannel = '518671807503532062'
 var setChannel
 var logMessages = true
 var messages = []
@@ -49,6 +50,52 @@ colors.setTheme({
 })
 
 /// Functions
+
+function compareTwoStrings(first, second) {
+	first = first.replace(/\s+/g, '')
+	second = second.replace(/\s+/g, '')
+
+	if (first === second) return 1; // identical or empty
+	if (first.length < 2 || second.length < 2) return 0; // if either is a 0-letter or 1-letter string
+
+	let firstBigrams = new Map();
+	for (let i = 0; i < first.length - 1; i++) {
+		const bigram = first.substring(i, i + 2);
+		const count = firstBigrams.has(bigram)
+			? firstBigrams.get(bigram) + 1
+			: 1;
+
+		firstBigrams.set(bigram, count);
+	};
+
+	let intersectionSize = 0;
+	for (let i = 0; i < second.length - 1; i++) {
+		const bigram = second.substring(i, i + 2);
+		const count = firstBigrams.has(bigram)
+			? firstBigrams.get(bigram)
+			: 0;
+
+		if (count > 0) {
+			firstBigrams.set(bigram, count - 1);
+			intersectionSize++;
+		}
+	}
+
+	return (2.0 * intersectionSize) / (first.length + second.length - 2);
+}
+
+function search_array(array, query, limit) {
+	var fake_array = []
+	array.forEach(i => {
+		let similarity = compareTwoStrings(query, i)
+		fake_array.push({
+			match: similarity,
+			value: i
+		})
+	})
+	fake_array.sort((a,b) => a.match - b.match)
+	return fake_array.slice(0, limit)
+}
 
 function console_cache(stuff) {
 	console_cache_arr.push(stuff)
@@ -122,6 +169,7 @@ function get_servers() {
 						print("patching :/")
 					}
 				})
+				print(the_obj)
 				to_send.push(the_obj)
 
 				guilds_iter++
@@ -210,7 +258,7 @@ io.on('connection', (socket) => {
 					msgs.sort((a, b) => a[0] - b[0])
 					print("initializing...")
 					let servers = await get_servers()
-					socket.emit('init', msgs, servers)
+					socket.emit('init', msgs, servers, setChannel.id)
 					print = console.log
 				}
 			})
@@ -222,6 +270,9 @@ io.on('connection', (socket) => {
   socket.on('chat message', (msg) => {
     small_send(msg)
   });
+	socket.on('emote_menu', (query) => {
+		socket.emit('get_emote_query', search_array(botInfo.keys(), query, 45))
+	})
 	socket.on('chat message attachment', (msg_arr) => {
 		let buffer = Buffer.from(msg_arr[1])
 		FileType.fromBuffer(buffer).then( file_type => {

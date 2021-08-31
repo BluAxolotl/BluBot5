@@ -80,6 +80,19 @@
 				width: 25px;
 				vertical-align: middle;
 			}
+			
+			#emoji-menu {
+				color: rgb(255 255 255);
+				background: #1E2731;
+				height: 100px;
+				float: right;
+				position: absolute;
+				top: -115px;
+				right: 40%;
+				opacity: 0;
+				border-radius: 5%;
+				transition: opacity 0.5s;
+			}
 
 			.emoji {
 				width: 25px;
@@ -131,6 +144,9 @@
     	<!-- <ul id="messages"></ul> -->
 		</div>
     <form id="form" action="">
+			<table id="emoji-menu">
+				<tbody id="emoji-menu body"></tbody>
+			</table>
       <input id="input" autocomplete="off" /><button>Image</button>
     </form>
 	<script src="/socket.io/socket.io.js"></script>	
@@ -149,7 +165,7 @@
 		loading_notif.textContent = "loading..."
 
 		var last_id = 0
-		var curr_server = "496420340965310474"
+		var curr_server = `496420340965310474`
 
 		form.addEventListener('submit', function(e) {
 			e.preventDefault();
@@ -243,6 +259,52 @@
 			})
 		}
 
+		function compareTwoStrings(first, second) {
+			first = first.replace(/\s+/g, '')
+			second = second.replace(/\s+/g, '')
+
+			if (first === second) return 1; // identical or empty
+			if (first.length < 2 || second.length < 2) return 0; // if either is a 0-letter or 1-letter string
+
+			let firstBigrams = new Map();
+			for (let i = 0; i < first.length - 1; i++) {
+				const bigram = first.substring(i, i + 2);
+				const count = firstBigrams.has(bigram)
+					? firstBigrams.get(bigram) + 1
+					: 1;
+
+				firstBigrams.set(bigram, count);
+			};
+
+			let intersectionSize = 0;
+			for (let i = 0; i < second.length - 1; i++) {
+				const bigram = second.substring(i, i + 2);
+				const count = firstBigrams.has(bigram)
+					? firstBigrams.get(bigram)
+					: 0;
+
+				if (count > 0) {
+					firstBigrams.set(bigram, count - 1);
+					intersectionSize++;
+				}
+			}
+
+			return (2.0 * intersectionSize) / (first.length + second.length - 2);
+		}
+
+		function search_array(array, query, limit) {
+			var fake_array = []
+			array.forEach(i => {
+				let similarity = compareTwoStrings(query, i)
+				fake_array.push({
+					match: similarity,
+					value: i
+				})
+			})
+			fake_array.sort((a,b) => a.match - b.match)
+			return fake_array.slice(0, limit)
+		}
+
 		function postmessage(author, content, user_icon, user_color, attachments, auth_id, msg_id) {
 			var item = document.createElement('li');
 			item.setAttribute("message_id", msg_id)
@@ -326,7 +388,7 @@
 			if (auth_id == "705347670054666260" || (document.body.scrollHeight - window.scrollY) < 1300) {window.scrollTo(0, document.body.scrollHeight)}
 		});
 
-		socket.on('init', function(msgs, servs) {
+		socket.on('init', function(msgs, servs, setChnl) {
 			messages.replaceChildren()
 			servers_arr = JSON.parse(servs)
 			channels_arr = (servers_arr.find(i => i.id == curr_server)).channels

@@ -2,7 +2,18 @@
   "token":"NzA1MzQ3NjcwMDU0NjY2MjYw.XqqYNQ.XSdyBys0NkJSOoZunQlvdfRNLKI",
   "servers": {
     "717086427581775893": {
+      "name": "Sinecraft",
       "icon": "https://i.imgur.com/8ghpCR6.png"
+    },
+    "496420340965310474": {
+      "name": "Logcord ⭐"
     }
+  },
+  "nickname": {
+    "383851442341019658": "Karma",
+    "150398769651777538": "Ans",
+    "497844474043432961": "Salty",
+    "141323186259230721": "Log",
+    "203221713440210944": "TheGubbys"
   }
 }
