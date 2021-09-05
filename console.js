@@ -1,5 +1,11 @@
 var colors = require('colors/safe')
 
+colors.setTheme({
+  data: "light blue",
+	err: "red",
+	note: "yellow",
+})
+
 let log = (stuff)=> {
   console.log(stuff)
 }

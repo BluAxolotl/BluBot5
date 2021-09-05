@@ -21,12 +21,40 @@
 				color: #fff
 			 }
 
-      #form { background: rgba(0, 0, 0, 0.15); margin-left: 215px; padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(5px); }
+      #form {
+				z-index: 12;
+				background: rgba(0, 0, 0, 0.15);
+				margin-left: 215px;
+				padding: 0.25rem;
+				position: fixed;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				display: flex;
+				height: 3rem;
+				box-sizing: border-box;
+				backdrop-filter: blur(5px);
+				float: right;
+				position: fixed;
+			}
       #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
       #input:focus { outline: none; }
       #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
 
-      #messages { z-index: 10; list-style: none; margin-top: 20px; margin-left: 215px; padding: 0; background-color: #12171D; height: 100%; overflow-y: scroll;}
+      #messages {
+				z-index: 10;
+				list-style: none;
+				width: 68%;
+				top: -35px;
+				margin-left: 235px;
+				padding: 0;
+				background-color: #12171D;
+				height: 100%;
+				overflow-y: scroll;
+				float: right;
+				position: fixed;
+			}
+
       #messages > li { padding: 0.5rem 1rem; margin-bottom: 0px; margin-top: 16px;}
 			#messages > li:hover { background-color: #11151B; }
       #messages > li > p { color: #fff; word-wrap: break-word; margin-top: 24px;}
@@ -41,13 +69,14 @@
 			}
 
 			#channels {
+				width: 175px;
 				z-index: 0;
 				overflow-wrap: break-word;
 				list-style: none;
 				float: left;
 				position: fixed;
 				margin-top: -7px;
-				margin-left: 50px;
+				margin-left: 60px;
 			}
 
 			#channels > div > p {
@@ -64,7 +93,7 @@
 			}
 
 			#servers {
-				width: 50px;
+				width: 60px;
 				list-style: none;
 				float: left;
 				position: fixed;
@@ -136,6 +165,22 @@
 				max-width: 30px;
 			}
 		</style>
+		<style>
+			/* width */
+			::-webkit-scrollbar {
+				width: 5px;
+			}
+
+			/* Track */
+			::-webkit-scrollbar-track {
+				background: #00000000;
+			}
+
+			/* Handle */
+			::-webkit-scrollbar-thumb {
+				background: #888;
+			}
+		</style>
   </head>
   <body>
 		<div id="loading" style="background-color: #12171D">
@@ -158,7 +203,8 @@
 			</table>
       <input id="input" autocomplete="off" /><button>Image</button>
     </form>
-	<script src="/socket.io/socket.io.js"></script>	
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="jimp.min.js"></script>
 	<script src="https://twemoji.maxcdn.com/v/13.1.0/twemoji.min.js" integrity="sha384-gPMUf7aEYa6qc3MgqTrigJqf4gzeO6v11iPCKv+AP2S4iWRWCoWyiR+Z7rWHM/hU" crossorigin="anonymous"></script>
 	<script>
 		var socket = io();
@@ -168,10 +214,13 @@
 		var servers = document.getElementById('servers');
 		var form = document.getElementById('form');
 		var input = document.getElementById('input');
+		// var notif = Audio.new("notif.mp3")
 		var imgElem = document.getElementById('chlicon');
 		var loading_screen = document.getElementById('loading')
 		var loading_notif = document.createElement('p')
 		loading_notif.textContent = "loading..."
+
+		// document.appendChild(notif)
 
 		var last_id = 0
 		var curr_server = `496420340965310474`
@@ -361,12 +410,9 @@
 					switch (att_type) {
 						case 'image':
 							var att_img = new Image()
-							var the_a_element = document.createElement('a')
-							the_a_element.href = attachment_arr[0]
-							the_a_element.setAttribute('target', '_blank')
 							att_img.src = attachment_arr[0]
+							att_img.onclick = function () { window.open(att_img.src) }
 							att_img.className = "attachment"
-							att_img.appendChild(the_a_element)
 							item.appendChild(att_img)
 						break;
 						case 'video':
@@ -400,7 +446,8 @@
 
 		socket.on('chat message', function(author, msg, user_img, color, attachments, auth_id, msg_id) {
 			postmessage(author, msg, user_img, color, attachments, auth_id, msg_id)
-			if (auth_id == "705347670054666260" || (document.body.scrollHeight - window.scrollY) < 1300) {window.scrollTo(0, document.body.scrollHeight)}
+			// notif.play()
+			if (auth_id == "705347670054666260" || (messages.scrollHeight - messages.scrollTop) < 700) {messages.scrollTo(0, messages.scrollHeight)}
 		});
 
 		socket.on('init', function(msgs, servs, setChnl) {
@@ -412,7 +459,7 @@
 				postmessage(i[1], i[2], i[3], i[4], i[5], i[6], i[7])
 			})
 			print("> pong from html!")
-			window.scrollTo(0, document.body.scrollHeight);
+			messages.scrollTo(0, messages.scrollHeight);
 			loading_screen.style = "visibility: hidden;"
 		})
 

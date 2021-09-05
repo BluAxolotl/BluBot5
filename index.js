@@ -1,4 +1,4 @@
-var colors = require('colors/safe')
+{}var colors = require('colors/safe')
 const classes = require('./classes.js')
 const bot = require('./bot.js')
 const console = require('./console.js')
@@ -16,6 +16,5 @@ const client = new Discord.Client()
 
 colors.setTheme({
   data: ['italic', 'grey'],
-  error: 'red',
-  note: 'dim'
+  error: 'red'
 })

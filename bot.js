@@ -1,10 +1,11 @@
 var colors = require('colors/safe')
-const botInfo = require('./botInfo.json')
+const token = process.env['token']
+const emotes = require("./emote.json")
 const classes = require('./classes.js')
 const Axolotl = classes.Axolotl
 var emoji = require('node-emoji')
-var stringSimilarity = require("string-similarity")
 const AxolotlEmbed = classes.AxolotlEmbed
+const TextParser = require("./text_parser.js").parser
 const console = require('./console.js')
 var print = console.log
 const Database = require("@replit/database")
@@ -14,7 +15,7 @@ const logErr = console.logErr
 const logNote = console.logNote
 const logColor = console.logColor
 const Discord = require('discord.js')
-require('discord-reply')
+require("./extended_message.js")
 const client = new Discord.Client()
 const { Client, MessageEmbed } = require('discord.js')
 const { parser, htmlOutput, toHTML } = require('discord-markdown')
@@ -26,11 +27,16 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 })
+const title = '``starting...``'
 const defaultChannel = '518671807503532062'
 var setChannel
+var botChl
+var botMsg
+var lastMsg
 var logMessages = true
 var messages = []
 var other_messages = []
+var msgids
 var nicknames = new Map()
 var usernames = new Map()
 const db = new Database()
@@ -43,7 +49,6 @@ const { Server } = require("socket.io");
 const io = new Server(server)
 var discord_inited = false
 var console_cache_arr = []
-var init = new EventEmitter()
 
 colors.setTheme({
   logMessage: ['brightBlue', 'italic']
@@ -51,70 +56,50 @@ colors.setTheme({
 
 /// Functions
 
-function init_emotes() {
-	base_emotes = 
-}
-
-init_emotes()
-
-function compareTwoStrings(first, second) {
-	first = first.replace(/\s+/g, '')
-	second = second.replace(/\s+/g, '')
-
-	if (first === second) return 1; // identical or empty
-	if (first.length < 2 || second.length < 2) return 0; // if either is a 0-letter or 1-letter string
-
-	let firstBigrams = new Map();
-	for (let i = 0; i < first.length - 1; i++) {
-		const bigram = first.substring(i, i + 2);
-		const count = firstBigrams.has(bigram)
-			? firstBigrams.get(bigram) + 1
-			: 1;
-
-		firstBigrams.set(bigram, count);
-	};
-
-	let intersectionSize = 0;
-	for (let i = 0; i < second.length - 1; i++) {
-		const bigram = second.substring(i, i + 2);
-		const count = firstBigrams.has(bigram)
-			? firstBigrams.get(bigram)
-			: 0;
-
-		if (count > 0) {
-			firstBigrams.set(bigram, count - 1);
-			intersectionSize++;
-		}
-	}
-
-	return (2.0 * intersectionSize) / (first.length + second.length - 2);
-}
-
-function search_array(array, query, limit) {
-	var fake_array = []
-	array.forEach(i => {
-		let similarity = compareTwoStrings(query, i)
-		fake_array.push({
-			match: similarity,
-			value: i
-		})
-	})
-	fake_array.sort((a,b) => a.match - b.match)
-	return fake_array.slice(0, limit)
-}
+const Jimp = require('jimp')
 
 function console_cache(stuff) {
 	console_cache_arr.push(stuff)
 }
 
-async function small_send(msg) {
-	let m = await setChannel.send(emoji.emojify(String(msg)))
-	messages.push(m)
+async function main() {
+  const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+  const image = await Jimp.read(1000, 1000, 0x0000ffff);
+
+  image.print(font, 10, 10, 'Hello World!');
+}
+
+main()
+
+function emotify(text) {
+	return new TextParser(text)
+				.replaceSurrDict(":", emotes)
+}
+
+function send(msg) {
+  botChl.send(String(msg))
+}
+
+function small_send(msg) {
+	setChannel.send(emotify(String(msg)))
+}
+
+function sendError(type) {
+  switch(type) {
+    case'syntax':
+      send('\`\`Invalid syntax\`\`')
+    break
+    default:
+      send('\`\`error\`\`')
+    break
+  }
 }
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
+
+var init = new EventEmitter()
 
 function get_channels() {
 	let to_send = []
@@ -135,7 +120,7 @@ function get_servers() {
 		setTimeout(() => {
 			if (!responed) {
 				responed = true
-				res([0, "-{ SYSTEM }-", `error, you dumb whore...`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
+				res([0, "-{ SYSTEM }-", `error, you dumb idiot...`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
 			}
 		}, 7000)
 		let to_send = []
@@ -162,22 +147,12 @@ function get_servers() {
 				if (!error && response.statusCode == 200) {
 					gd_data = "data:" + response.headers["content-type"] + ";base64," + Buffer.from(body).toString('base64');
 				}
-				let the_obj = {
+				to_send.push({
 					name: i.name,
 					icon: gd_data,
 					id: i.id,
 					channels: channels,
-				}
-				Object.keys(the_obj).forEach(key => {
-					let bot_server = botInfo.servers[i.id]
-					if (bot_server != null && bot_server[key] != null) {
-						the_obj[key] = bot_server[key]
-						print("patching :/")
-					}
 				})
-				print(the_obj)
-				to_send.push(the_obj)
-
 				guilds_iter++
 				if (guilds_iter == guilds_total) {
 					to_send.sort((a, b) => a.name < b.name)
@@ -195,22 +170,27 @@ async function get_message_args(message) {
 			if (!responed) {
 				print("ERROR: " + message.author.username + ": " + message.content)
 				responed = true
-				res([0, "-{ SYSTEM }-", `error, you dumb whore...`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
+				res([0, "-{ SYSTEM }-", `error, you dumb idiot...`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
 			}
 		}, 7000)
 		let ma = message.attachments.array()
 		let color = "#fff"
 		let author_name = message.author.username
 		if (message.member != null) {
-			author_name = (message.member.nickname != "" ? message.author.username : message.member.nickname)
+			author_name = (message.member.nickname != null ? `${message.member.nickname} (${message.author.username})` : message.author.username)
 			color = message.member.displayHexColor
 		}
+		let new_content = message.cleanContent
+		// print(new_content)
+		new_content = new TextParser(new_content)
+			.replaceSurrDict(":", emotes)
+		new_content = toHTML(new_content)
 		request.get(message.author.displayAvatarURL(), function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 				let data = "data:" + response.headers["content-type"] + ";base64," + Buffer.from(body).toString('base64');
 				if (ma.length == 0) {
 					responed = true
-					res([message.createdAt.valueOf(), author_name, toHTML(emoji.emojify(message.content)), data, color, null, message.author.id, message.id])
+					res([message.createdAt.valueOf(), author_name, new_content, data, color, null, message.author.id, message.id])
 				} else {
 					let attachs = []
 					let attach_total = ma.length
@@ -221,27 +201,23 @@ async function get_message_args(message) {
 								buffer = Buffer.from(at_body)
 								let att_data = "data:" + at_response.headers["content-type"] + ";base64," + Buffer.from(at_body).toString('base64');
 								FileType.fromBuffer(buffer).then( file_type => {
-									if (file_type) {
-										attachs[attach_iter] = [att_data, file_type.mime]
-										attach_iter++
-									} else {
-										attach_total--
-									}
+									attachs[attach_iter] = [att_data, file_type.mime]
+									attach_iter++
 									if (attach_iter == attach_total) {
 										responed = true
-										res([message.createdAt.valueOf(), author_name, toHTML(emoji.emojify(message.content)), data, color, JSON.stringify(attachs), message.author.id, message.id])
+										res([message.createdAt.valueOf(), author_name, new_content, data, color, JSON.stringify(attachs), message.author.id, message.id])
 									}
 								})
 							} else {
 								responed = true
-								res([0, "-{ SYSTEM }-", `error, you dumb whore...\n${at_error}`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
+								res([0, "-{ SYSTEM }-", `error, you dumb idiot...\n${at_error}`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
 							}
 						})
 					})
 				}
 			} else {
 				responed = true
-				res([0, "-{ SYSTEM }-", `error, you dumb whore...\n${error}`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
+				res([0, "-{ SYSTEM }-", `error, you dumb idiot...\n${error}`, "https://i.imgur.com/zC3bS7w.png", "#ffea63", null, "100"]);
 			}
 		})
 	})
@@ -264,7 +240,7 @@ io.on('connection', (socket) => {
 					msgs.sort((a, b) => a[0] - b[0])
 					print("initializing...")
 					let servers = await get_servers()
-					socket.emit('init', msgs, servers, setChannel.id)
+					socket.emit('init', msgs, servers)
 					print = console.log
 				}
 			})
@@ -274,17 +250,15 @@ io.on('connection', (socket) => {
 		channel_init()
 	}
   socket.on('chat message', (msg) => {
-    small_send(msg)
+		if (!msg.startsWith('/')) {
+			small_send(msg)
+		} else {
+			console_command(msg.substring(1))
+		}
   });
-	socket.on('emote_menu', (query) => {
-		socket.emit('get_emote_query', search_array(botInfo.keys(), query, 45))
-	})
-	socket.on('chat message attachment', (msg_arr) => {
-		let buffer = Buffer.from(msg_arr[1])
-		FileType.fromBuffer(buffer).then( file_type => {
-			print(file_type)
-			let attach = new Discord.MessageAttachment(buffer, `file.jpg`)
-			setChannel.send(msg_arr[0], attach)
+	socket.on('chat message attechment', (msg_arr) => {
+		setChannel.send(msg_arr[0], {
+			files: [Buffer.from(msg_arr[1])]
 		})
 	})
 	socket.on('change_channel', (channel_id) => {
@@ -301,12 +275,12 @@ io.on('connection', (socket) => {
 		let typing_channel = setChannel
 		typing_channel.startTyping()
 		setTimeout(function () {
-			typing_channel.stopTyping()
-		}, 1500)
+			setChannel.stopTyping()
+		}, 500)
 	})
 	socket.on('reply', (msg_id, content) => {
-		setChannel.send(emoji.emojify(String(content)), {
-			reply: msg_id
+		setChannel.messages.fetch(msg_id).then(msg => {
+			msg.inlineReply(content)
 		})
 	})
 	client.on('message', msg => {
@@ -361,11 +335,15 @@ client.on('message', msg => {
         logColor(value.url, 'brightBlue')
       })
   }
+    lastMsg = msg
   }
+  botMsg = msg
+  botChl = msg.channel
 })
 
 /// console
-rl.on('line', async (input) => {
+
+async function console_command(input) {
 	const args = input.split(" ")
   switch (input.split(" ")[0]) {
     case 'set':
@@ -393,6 +371,29 @@ rl.on('line', async (input) => {
         lastMsg.react(emojis[num].identifier)
       }
     break
+		case 'lookup':
+			let type = args[1]
+			switch (type) {
+				case 'user':
+					let u = await client.users.fetch(args[2])
+					colors.setTheme({
+						online: "green",
+						dnd: "red",
+						offline: "gray",
+						idle: "yellow"
+					})
+					print(`User: ${u.username}` + colors[u.presence.status](` ( ${u.presence.status[0].toUpperCase()}${u.presence.status[1]} )`))
+				break;
+				case 'channel':
+					let c = await client.channels.fetch(args[2])
+					print(`Channels: [${c.guild.name}|${c.name}]`)
+				break;
+				case 'server':
+					let s = await client.guilds.fetch(args[2])
+					print(`Server: ${s.name}`)
+				break;
+			}
+		break
     case 'ping':
 		let mentionee
 			if (usernames.has(String(input.replace("ping ", "")))) {
@@ -453,11 +454,6 @@ rl.on('line', async (input) => {
       let f = new Function(`${input.replace("calc ", "return ")}`)
 			log(`result: ${f()}`)
     break
-		case 'search':
-			client.channels.fetch(input.replace("search ", "")).then(i => {
-				print(`Channel Name: ${i.name} | Server: ${i.guild.name}`)
-			})
-		break
 		case 'nick':
       let nickname = args[1]
 			let usertag = String(args.join(" ")).replace(`nick ${args[1]} `, "")
@@ -479,17 +475,87 @@ rl.on('line', async (input) => {
 			messages = []
 			log("deleted all cached AxoBot messages")
 		break
+		case 'save':
+		function save() {
+			db.empty()
+			db.set("usernames",Array.from(usernames.values())).then(() => {
+				db.set("nicknames", Array.from(nicknames.values())).then(() => {
+					db.set("messages", messages).then(() => {
+						db.get("usernames").then(v => {
+							if (v == null) {
+								logErr("Error saving usernames")
+								save()
+							} else{
+								db.get("nicknames").then(val => {
+									if (val == null) {
+										logErr("Error saving nicknames")
+										save()
+									} else {
+										db.get("messages").then(msg => {
+											if (msg == null) {
+												logErr("Error saving messages")
+												save()
+											} else {
+												logColor("saved!", "green")
+											}
+										})
+									}
+								})
+							}
+							})
+					})
+				})
+			})
+		}
+		save()
+		break
+		case 'savemsg':
+		db.delete("messages").then(() => {
+				db.set("messages", messages).then(() => {
+					logColor("saved messages!", "green")
+				})
+		})
+		break
+		case 'clrmsg':
+			db.set("messages", []).then(() => {
+			logColor("Deleted messages!", "green")
+		})
+		break
 		case 'reply':
 			let ii = Number(args[1])
 			let contentss = emoji.emojify(String(args.join(" ")).replace(`reply ${args[1]} `, ""))
 			let msgmsg = await other_messages[ii].reply(contentss)
 			messages.push(msgmsg)
 		break
+		case 'load':
+		usernames.clear()
+		nicknames.clear()
+		db.get("usernames").then(v => {
+			db.get("nicknames").then(val => {
+				v.forEach(function(item, index, array) {
+					nicknames.set(item, val[index])
+					usernames.set(val[index], item)
+				})
+				db.get("messages").then(msgs => {
+					msgs.forEach(function(item, index, array) {
+						item.fetch().then(m => {
+							messages.push(m)
+						})
+					})
+					logNote(msgs)
+					logColor("loaded!", "green")
+				})
+			})
+		})
+		break
     default:
-      input.replace("send ", "")
+      let m = await setChannel.send(emoji.emojify(input.replace("send ", "")))
+			messages.push(m)
     break
   }
-})
+} 
+
+rl.on('line', console_command)
 
 /// Bot Initialization
 
@@ -503,7 +569,7 @@ client.channels.fetch(defaultChannel)
   })
 })
 
-client.login(botInfo["token"])
+client.login(token)
 
 server.listen(4000, () => {
   console.log('listening on *:3000');
